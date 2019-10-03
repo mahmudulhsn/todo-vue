@@ -1,28 +1,44 @@
 <template>
 <div>
   <input type="text" class="todo-input" placeholder="What needs to be done?" v-model="newTodo" @keyup.enter="addTOdo">
-  <div v-for="(todo, index) in todos" :key="todo.id" class="todo-item">
-    <div class="todo-item-left">
-      <div v-if="!todo.editing" @dblclick="editTodo(todo)" class="todo-item-label">{{ todo.title }}</div>
-      <input v-else type="text" class="todo-item-edit" v-model="todo.title" @blur="doneEdit(todo)" @keyup.enter="doneEdit(todo)" @keyup.esc="cancelEdit(todo)" v-focus>
+
+  <transition-group enter-active-class="animated fadeInUp" leave-active-class="animated fadeOutDown">
+  <todo-item v-for="(todo, index) in todosFiltered" :key="todo.id" :todo="todo" :index="index" @removedTodo="removeTodo" @finishEdit="finishEdit" :checkAll="!anyRemaining">
+  </todo-item>
+  </transition-group>
+
+  <div class="extra-container">
+    <div><label><input type="checkbox" :checked="!anyRemaining" @change="checkAllTodos"> Check All</label></div>
+    <div>{{ remaining }} items left.</div>
+  </div>
+  <div class="extra-container">
+    <div>
+      <button :class="{active: filter == 'all'}" @click="filter = 'all'">All</button>
+      <button :class="{active: filter == 'active'}" @click="filter = 'active'">Active</button>
+      <button :class="{active: filter == 'completed'}" @click="filter = 'completed'">Completed</button>
     </div>
-    <div class="remove-item">
-      <span class="remove" @click="removeTodo(index)">
-        &times;
-      </span>
+    <div>
+      <transition name="fade">
+        <button v-if="showClearCompletedButton" @click="clearCompleted">Clear Completed</button>
+      </transition>
     </div>
   </div>
 </div>
 </template>
 
 <script>
+import TodoItem from './TodoItem'
 export default {
   name: 'todo-list',
+  components:{
+    TodoItem
+  },
   data () {
     return {
       newTodo: '',
       idForTodo:3,
       beforeEditCache: '',
+      filter: 'all',
       todos:[
         {
           'id': 1,
@@ -39,11 +55,25 @@ export default {
       ]
     }
   },
-  directives: {
-    focus: {
-      inserted: function (el) {
-        el.focus()
+  computed: {
+    remaining() {
+      return this.todos.filter(todo => !todo.completed).length
+    },
+    anyRemaining() {
+      return this.remaining != 0
+    },
+    todosFiltered() {
+      if (this.filter == 'all') {
+        return this.todos
+      } else if(this.filter == 'active') {
+        return this.todos.filter(todo => !todo.completed)
+      } else if(this.filter == 'completed') {
+        return this.todos.filter(todo => todo.completed)
       }
+      return this.todos
+    },
+    showClearCompletedButton() {
+      return this.todos.filter(todo => todo.completed).length > 0
     }
   },
   methods: {
@@ -54,7 +84,8 @@ export default {
       this.todos.push({
         id: this.idForTodo,
         title: this.newTodo,
-        completed: false
+        completed: false,
+        editing: false
       })
 
       this.newTodo = ' ',
@@ -63,22 +94,29 @@ export default {
     removeTodo(index) {
       this.todos.splice(index, 1);
     },
-    editTodo(todo) {
-      this.beforeEditCache = todo.title
-      todo.editing = true
-    },
-    doneEdit(todo) {
-      todo.editing = false
-    },
     cancelEdit(todo) {
       todo.title = this.beforeEditCache
       todo.editing = false
+    },
+    checkAllTodos() {
+      this.todos.forEach((todo) => todo.completed = event.target.checked)
+      // this.todos.forEach((todo, index) => {
+      //   todo.completed = event.target.checked
+      //   })
+    },
+    clearCompleted() {
+      this.todos = this.todos.filter(todo => !todo.completed)
+    },
+    finishEdit(data) {
+      this.todos.splice(data.index, 1, data.todo)
     }
   },
 }
 </script>
 
 <style>
+/* animate css cdn */
+@import url("https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.7.2/animate.min.css");
 .todo-input{
   width: 100%;
   padding: 10px 18px;
@@ -90,6 +128,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  animation-duration: .3s;
 }
 .remove-item{
   cursor: pointer;
@@ -117,11 +156,44 @@ export default {
   margin-left: 12px;
   width: 100%;
   padding: 10px;
-  border: 1px solid #ccc; //override defaults
+  border: 1px solid #ccc;
   font-family: 'Avenir', Helvetica, Arial, sans-serif;
-  &:focus {
-    outline: none;
-  }
 }
 
+.completed{
+  text-decoration: line-through;
+  color: grey;
+}
+
+.extra-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 16px;
+    border-top: 1px solid lightgrey;
+    padding-top: 14px;
+    margin-bottom: 14px;
+  }
+  button {
+    font-size: 14px;
+    background-color: white;
+    appearance: none;
+    &:hover {
+      background: lightgreen;
+    }
+    &:focus {
+      outline: none;
+    }
+  }
+  .active {
+    background: lightgreen;
+  }
+
+  /* transition */
+  .fade-enter-active, .fade-leave-active{
+    transition: opacity .5s;
+  }
+  .fade-enter, .fade-leave-to{
+    opacity: 0;
+  }
 </style>
