@@ -6,6 +6,7 @@
       <input v-else type="text" class="todo-item-edit" v-model="title" @blur="doneEdit" @keyup.enter="doneEdit" @keyup.esc="cancelEdit" v-focus>
     </div>
     <div class="remove-item">
+      <button @click="pluralize">Plural</button>
       <span class="remove" @click="removeTodo(index)">
         &times;
       </span>
@@ -39,6 +40,12 @@
         'beforeEditCache': ''
       }
     },
+    created() {
+      eventBus.$on('pluralizzze', this.handlePlural)
+    },
+    beforeDestroy() {
+      eventBus.$off('pluralizzze', this.handlePlural)
+    },
     watch: {
       checkAll() {
         //  if (this.checkAll) {
@@ -58,7 +65,7 @@
     },
     methods: {
       removeTodo(index) {
-        this.$emit('removedTodo', index)
+        eventBus.$emit('removedTodo', index)
       },
       editTodo() {
         this.beforeEditCache = this.title
@@ -69,7 +76,7 @@
           this.title = this.beforeEditCache
         }
         this.editing = false
-        this.$emit('finishEdit', {
+        eventBus.$emit('finishEdit', {
           'index': this.index,
           'todo': {
             'id': this.id,
@@ -83,6 +90,21 @@
         this.title = this.beforeEditCache
         this.editing = false
       },
+      pluralize () {
+        eventBus.$emit('pluralizzze')
+      },
+      handlePlural () {
+        this.title = this.title + 's'
+        eventBus.$emit('finishEdit', {
+          'index': this.index,
+          'todo': {
+            'id': this.id,
+            'title': this.title,
+            'completed': this.completed,
+            'editing': this.editing,
+          }
+        })
+      }
     },
 
   }
